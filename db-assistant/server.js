@@ -12,7 +12,11 @@ const {
   saveSchema,
   getSchema,
 } = require("./utils/connectionManager");
-const { generateSQL, verifySQL } = require("./utils/aiService");
+const {
+  generateSQL,
+  verifySQL,
+  getTableSummary,
+} = require("./utils/aiService");
 const { pool } = require("mssql");
 
 const app = express();
@@ -66,9 +70,10 @@ app.post("/protected/connectDB", authMiddleware, async (req, res) => {
       foreignKeys,
     });
 
+    const summary_data = await getTableSummary(tables);
     res.json({
       message: "Database connected successfully!",
-      schema: { tables, columns, foreignKeys }, // Optional: send schema to frontend if needed
+      summary: summary_data, // Optional: send schema to frontend if needed
     });
   } catch (err) {
     console.error(err);
