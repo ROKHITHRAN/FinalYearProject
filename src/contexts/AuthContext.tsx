@@ -1,19 +1,44 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, AuthState } from '../types';
+// context/AuthContext.tsx
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import {
+  register,
+  loginWithGoogle,
+  logout,
+  loginWithEmail,
+  saveUser,
+} from "../services/firebase";
+
+interface User {
+  uid: string;
+  email: string;
+  name?: string;
+}
+
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  token: string | null;
+}
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
-  signOut: () => void;
+  signUp: (email: string, password: string, name?: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 };
 
@@ -21,113 +46,128 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Mock authentication functions
-const mockSignIn = async (email: string, password: string): Promise<User> => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Simple validation for demo
-  if (email === 'demo@example.com' && password === 'password') {
-    return {
-      id: '1',
-      email: 'demo@example.com',
-      name: 'Demo User'
-    };
-  }
-  
-  throw new Error('Invalid credentials');
-};
-
-const mockSignUp = async (email: string, password: string, name: string): Promise<User> => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Simple validation for demo
-  if (email && password && name) {
-    return {
-      id: Date.now().toString(),
-      email,
-      name
-    };
-  }
-  
-  throw new Error('Invalid registration data');
-};
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
-    isLoading: true
+    isLoading: true,
+    token: localStorage.getItem("token") || null,
   });
 
-  // Check for existing session on mount
+  // Initialize user from localStorage
   useEffect(() => {
-    const savedUser = localStorage.getItem('dbChatUser');
-    if (savedUser) {
+    const savedUser = localStorage.getItem("dbChatUser");
+    const token = localStorage.getItem("token");
+    if (savedUser && token) {
       try {
-        const user = JSON.parse(savedUser);
         setAuthState({
-          user,
+          user: JSON.parse(savedUser),
           isAuthenticated: true,
-          isLoading: false
+          isLoading: false,
+          token,
         });
       } catch {
-        localStorage.removeItem('dbChatUser');
-        setAuthState(prev => ({ ...prev, isLoading: false }));
+        localStorage.removeItem("dbChatUser");
+        localStorage.removeItem("token");
+        setAuthState((prev) => ({ ...prev, isLoading: false }));
       }
     } else {
-      setAuthState(prev => ({ ...prev, isLoading: false }));
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
     }
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    setAuthState(prev => ({ ...prev, isLoading: true }));
+    setAuthState((prev) => ({ ...prev, isLoading: true }));
     try {
-      const user = await mockSignIn(email, password);
-      localStorage.setItem('dbChatUser', JSON.stringify(user));
+      const user = await loginWithEmail(email, password); // firebase.js login returns { uid, email, token }
+      localStorage.setItem("dbChatUser", JSON.stringify(user));
+      localStorage.setItem("token", user.token!);
+      const FBuser: User = {
+        uid: user.uid,
+        email: user.email || "",
+        name: user.name || undefined,
+      };
       setAuthState({
-        user,
+        user: FBuser,
         isAuthenticated: true,
-        isLoading: false
+        isLoading: false,
+        token: user.token!,
       });
     } catch (error) {
-      setAuthState(prev => ({ ...prev, isLoading: false }));
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
       throw error;
     }
   };
 
-  const signUp = async (email: string, password: string, name: string) => {
-    setAuthState(prev => ({ ...prev, isLoading: true }));
+  const signUp = async (email: string, password: string) => {
+    setAuthState((prev) => ({ ...prev, isLoading: true }));
     try {
-      const user = await mockSignUp(email, password, name);
-      localStorage.setItem('dbChatUser', JSON.stringify(user));
+      const user = await register(email, password); // firebase.js register
+      localStorage.setItem("dbChatUser", JSON.stringify(user));
+      localStorage.setItem("token", user.token);
+      const FBuser: User = {
+        uid: user.uid,
+        email: user.email || "",
+        name: user.name || undefined,
+      };
       setAuthState({
-        user,
+        user: FBuser,
         isAuthenticated: true,
-        isLoading: false
+        isLoading: false,
+        token: user.token,
       });
     } catch (error) {
-      setAuthState(prev => ({ ...prev, isLoading: false }));
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
       throw error;
     }
   };
 
-  const signOut = () => {
-    localStorage.removeItem('dbChatUser');
-    localStorage.removeItem('dbChatSessions');
+  const signInWithGoogleHandler = async () => {
+    setAuthState((prev) => ({ ...prev, isLoading: true }));
+    try {
+      const user = await loginWithGoogle(); // firebase.js Google login
+      localStorage.setItem("dbChatUser", JSON.stringify(user));
+      localStorage.setItem("token", user.token);
+      const FBuser: User = {
+        uid: user.uid,
+        email: user.email || "",
+        name: user.name || undefined,
+      };
+      setAuthState({
+        user: FBuser,
+        isAuthenticated: true,
+        isLoading: false,
+        token: user.token || "",
+      });
+      await saveUser(FBuser);
+    } catch (error) {
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      throw error;
+    }
+  };
+
+  const signOutHandler = async () => {
+    await logout();
+    localStorage.removeItem("dbChatUser");
+    localStorage.removeItem("token");
     setAuthState({
       user: null,
       isAuthenticated: false,
-      isLoading: false
+      isLoading: false,
+      token: null,
     });
   };
 
   return (
-    <AuthContext.Provider value={{
-      ...authState,
-      signIn,
-      signUp,
-      signOut
-    }}>
+    <AuthContext.Provider
+      value={{
+        ...authState,
+        signIn,
+        signUp,
+        signInWithGoogle: signInWithGoogleHandler,
+        signOut: signOutHandler,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

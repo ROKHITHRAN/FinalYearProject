@@ -1,37 +1,48 @@
-import React, { useState } from 'react';
-import { Database, Mail, Lock, User, Eye, EyeOff, Loader } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
+import React, { useState } from "react";
+import {
+  Database,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Loader,
+  Chrome,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 
 const SignInPage: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    name: ''
+    email: "",
+    password: "",
+    name: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
-  const { signIn, signUp, isLoading } = useAuth();
+
+  const { signIn, signUp, signInWithGoogle, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const newErrors: Record<string, string> = {};
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    if (!formData.password.trim()) newErrors.password = 'Password is required';
-    if (isSignUp && !formData.name.trim()) newErrors.name = 'Name is required';
-    
+    if (!formData.email.trim()) newErrors.email = "Email is required";
+    if (!formData.password.trim()) newErrors.password = "Password is required";
+
     setErrors(newErrors);
-    
+
     if (Object.keys(newErrors).length === 0) {
       try {
         if (isSignUp) {
-          await signUp(formData.email, formData.password, formData.name);
+          await signUp(formData.email, formData.password);
         } else {
-          await signIn(formData.email, formData.password);
+          try {
+            await signIn(formData.email, formData.password);
+          } catch (e) {
+            alert("Invalid credentials");
+          }
         }
       } catch (error) {
         setErrors({ general: (error as Error).message });
@@ -40,16 +51,25 @@ const SignInPage: React.FC = () => {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const res = await signInWithGoogle();
+      console.log(res);
+    } catch (error) {
+      setErrors({ general: (error as Error).message });
     }
   };
 
   const toggleMode = () => {
     setIsSignUp(!isSignUp);
     setErrors({});
-    setFormData({ email: '', password: '', name: '' });
+    setFormData({ email: "", password: "", name: "" });
   };
 
   return (
@@ -64,7 +84,9 @@ const SignInPage: React.FC = () => {
             DB Chat
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            {isSignUp ? 'Create your account to get started' : 'Sign in to your account'}
+            {isSignUp
+              ? "Create your account to get started"
+              : "Sign in to your account"}
           </p>
         </div>
 
@@ -76,43 +98,24 @@ const SignInPage: React.FC = () => {
                 {errors.general}
               </div>
             )}
-
-            {isSignUp && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <User size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    placeholder="Enter your full name"
-                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
-                      errors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                  />
-                </div>
-                {errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-                )}
-              </div>
-            )}
-
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email Address
               </label>
               <div className="relative">
-                <Mail size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <Mail
+                  size={20}
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                />
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
                   placeholder="Enter your email"
                   className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
-                    errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    errors.email
+                      ? "border-red-500"
+                      : "border-gray-300 dark:border-gray-600"
                   }`}
                 />
               </div>
@@ -126,14 +129,21 @@ const SignInPage: React.FC = () => {
                 Password
               </label>
               <div className="relative">
-                <Lock size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <Lock
+                  size={20}
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                />
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   value={formData.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("password", e.target.value)
+                  }
                   placeholder="Enter your password"
                   className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
-                    errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    errors.password
+                      ? "border-red-500"
+                      : "border-gray-300 dark:border-gray-600"
                   }`}
                 />
                 <button
@@ -157,31 +167,58 @@ const SignInPage: React.FC = () => {
               {isLoading ? (
                 <>
                   <Loader size={20} className="animate-spin" />
-                  {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                  {isSignUp ? "Creating Account..." : "Signing In..."}
                 </>
+              ) : isSignUp ? (
+                "Create Account"
               ) : (
-                isSignUp ? 'Create Account' : 'Sign In'
+                "Sign In"
               )}
             </button>
           </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              className="mt-4 w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <Chrome size={20} className="text-blue-500" />
+              <span className="text-gray-700 dark:text-gray-300 font-medium">
+                Sign in with Google
+              </span>
+            </button>
+          </div>
 
           <div className="mt-6 text-center">
             <button
               onClick={toggleMode}
               className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
             >
-              {isSignUp 
-                ? 'Already have an account? Sign in' 
-                : "Don't have an account? Sign up"
-              }
+              {isSignUp
+                ? "Already have an account? Sign in"
+                : "Don't have an account? Sign up"}
             </button>
           </div>
 
           {!isSignUp && (
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
               <p className="text-sm text-blue-800 dark:text-blue-300 text-center">
-                <strong>Demo credentials:</strong><br />
-                Email: demo@example.com<br />
+                <strong>Demo credentials:</strong>
+                <br />
+                Email: demo@example.com
+                <br />
                 Password: password
               </p>
             </div>
@@ -194,7 +231,7 @@ const SignInPage: React.FC = () => {
             onClick={toggleTheme}
             className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors text-sm"
           >
-            Switch to {theme === 'light' ? 'Dark' : 'Light'} Mode
+            Switch to {theme === "light" ? "Dark" : "Light"} Mode
           </button>
         </div>
       </div>
