@@ -1,6 +1,6 @@
 export interface ChatMessage {
   id: string;
-  sender: 'user' | 'system';
+  sender: "user" | "system";
   text: string;
   timestamp: Date;
 }
@@ -16,13 +16,16 @@ export interface Session {
 }
 
 export interface DatabaseConnection {
-  dbUrl: string;
+  type: "mysql" | "postgresql" | "sqlite" | "mongodb";
+  host: string;
+  port: number;
+  database: string;
   username: string;
   password: string;
   alias?: string;
 }
 
-export type Theme = 'light' | 'dark';
+export type Theme = "light" | "dark";
 
 export interface User {
   id: string;
@@ -34,4 +37,5 @@ export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  token: string | null;
 }
