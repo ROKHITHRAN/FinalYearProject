@@ -53,7 +53,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading: true,
     token: localStorage.getItem("token") || null,
   });
-
   // Initialize user from localStorage
   useEffect(() => {
     const savedUser = localStorage.getItem("dbChatUser");

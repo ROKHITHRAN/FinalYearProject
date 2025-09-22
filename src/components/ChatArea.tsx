@@ -1,16 +1,87 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader, Database, Bot, User } from 'lucide-react';
-import { useSession } from '../contexts/SessionContext';
+import React, { useState, useRef, useEffect } from "react";
+import { Send, Loader, Database, Bot, User } from "lucide-react";
+import { useSession } from "../contexts/SessionContext";
+
+// Component to render table data
+const TableRenderer: React.FC<{ data: any[] }> = ({ data }) => {
+  if (!data || data.length === 0) return null;
+
+  const columns = Object.keys(data[0]);
+
+  return (
+    <div className="overflow-x-auto mt-3">
+      <table className="min-w-full border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+        <thead className="bg-gray-50 dark:bg-gray-800">
+          <tr>
+            {columns.map((column) => (
+              <th
+                key={column}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700"
+              >
+                {column.replace(/_/g, " ")}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+          {data.map((row, index) => (
+            <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+              {columns.map((column) => (
+                <td
+                  key={column}
+                  className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap"
+                >
+                  {row[column]}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+// Component to render message content with table support
+const MessageContent: React.FC<{ text: string }> = ({ text }) => {
+  // Check if message contains table data
+  const tableDataMatch = text.match(/\[TABLE_DATA\](.+)$/);
+
+  if (tableDataMatch) {
+    try {
+      const tableData = JSON.parse(tableDataMatch[1]);
+      const textWithoutTable = text.replace(/\[TABLE_DATA\].+$/, "").trim();
+
+      return (
+        <div>
+          <div className="whitespace-pre-wrap break-words">
+            {textWithoutTable}
+          </div>
+          <TableRenderer data={tableData} />
+        </div>
+      );
+    } catch (error) {
+      // If parsing fails, just show the original text
+      return (
+        <div className="whitespace-pre-wrap break-words">
+          {text.replace(/\[TABLE_DATA\].+$/, "")}
+        </div>
+      );
+    }
+  }
+
+  return <div className="whitespace-pre-wrap break-words">{text}</div>;
+};
 
 const ChatArea: React.FC = () => {
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   const { currentSession, sendQuery, isLoading } = useSession();
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -22,11 +93,11 @@ const ChatArea: React.FC = () => {
     if (!inputValue.trim() || !currentSession || isLoading) return;
 
     const query = inputValue.trim();
-    setInputValue('');
-    
+    setInputValue("");
+
     // Reset textarea height
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = "auto";
     }
 
     await sendQuery(currentSession.id, query);
@@ -34,16 +105,19 @@ const ChatArea: React.FC = () => {
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
-    
+
     // Auto-resize textarea
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(
+        textareaRef.current.scrollHeight,
+        120
+      )}px`;
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
     }
@@ -53,7 +127,10 @@ const ChatArea: React.FC = () => {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-800">
         <div className="text-center">
-          <Database size={64} className="mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+          <Database
+            size={64}
+            className="mx-auto mb-4 text-gray-400 dark:text-gray-500"
+          />
           <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
             No Database Connected
           </h2>
@@ -96,39 +173,49 @@ const ChatArea: React.FC = () => {
             <div
               key={message.id}
               className={`flex gap-3 ${
-                message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
+                message.sender === "user" ? "flex-row-reverse" : "flex-row"
               }`}
             >
-              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                message.sender === 'user' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-              }`}>
-                {message.sender === 'user' ? <User size={16} /> : <Bot size={16} />}
+              <div
+                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                  message.sender === "user"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                }`}
+              >
+                {message.sender === "user" ? (
+                  <User size={16} />
+                ) : (
+                  <Bot size={16} />
+                )}
               </div>
-              
-              <div className={`flex-1 max-w-3xl ${
-                message.sender === 'user' ? 'text-right' : 'text-left'
-              }`}>
-                <div className={`inline-block p-4 rounded-lg ${
-                  message.sender === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
-                }`}>
-                  <div className="whitespace-pre-wrap break-words">
-                    {message.text}
-                  </div>
+
+              <div
+                className={`flex-1 max-w-3xl ${
+                  message.sender === "user" ? "text-right" : "text-left"
+                }`}
+              >
+                <div
+                  className={`inline-block p-4 rounded-lg ${
+                    message.sender === "user"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700"
+                  }`}
+                >
+                  <MessageContent text={message.text} />
                 </div>
-                <div className={`text-xs text-gray-500 dark:text-gray-400 mt-1 ${
-                  message.sender === 'user' ? 'text-right' : 'text-left'
-                }`}>
+                <div
+                  className={`text-xs text-gray-500 dark:text-gray-400 mt-1 ${
+                    message.sender === "user" ? "text-right" : "text-left"
+                  }`}
+                >
                   {message.timestamp.toLocaleTimeString()}
                 </div>
               </div>
             </div>
           ))
         )}
-        
+
         {isLoading && (
           <div className="flex gap-3">
             <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
@@ -144,7 +231,7 @@ const ChatArea: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
@@ -160,7 +247,7 @@ const ChatArea: React.FC = () => {
               placeholder="Ask your database anything..."
               rows={1}
               className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none min-h-[52px] max-h-[120px]"
-              style={{ height: 'auto' }}
+              style={{ height: "auto" }}
             />
           </div>
           <button

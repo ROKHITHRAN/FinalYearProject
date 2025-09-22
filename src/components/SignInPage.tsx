@@ -59,8 +59,7 @@ const SignInPage: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     try {
-      const res = await signInWithGoogle();
-      console.log(res);
+      await signInWithGoogle();
     } catch (error) {
       setErrors({ general: (error as Error).message });
     }

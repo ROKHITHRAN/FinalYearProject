@@ -26,14 +26,7 @@ let currentConfig;
 // Public routes
 app.use("/auth", authRoutes);
 
-// Protected test route
-app.get("/protected", authMiddleware, (req, res) => {
-  res.json({
-    message: `Hello ${req.user.username}, you accessed a protected route 🚀`,
-  });
-});
-
-app.post("/protected/connectDB", authMiddleware, async (req, res) => {
+app.post("/connectDB", async (req, res) => {
   try {
     const dbConfig = req.body; // { type, host, port, database, username, password, alias }
 
@@ -41,7 +34,7 @@ app.post("/protected/connectDB", authMiddleware, async (req, res) => {
     const pool = await connectDB(dbConfig);
     currentConfig = dbConfig;
     // Save connection for user
-    saveConnection(req.user.username, pool);
+    saveConnection(dbConfig.alias, pool);
 
     // Fetch schema info immediately
     const [tables] = await pool.query(
@@ -83,7 +76,7 @@ app.post("/protected/connectDB", authMiddleware, async (req, res) => {
   }
 });
 
-app.post("/protected/query", authMiddleware, async (req, res) => {
+app.post("/query", async (req, res) => {
   try {
     if (!currentConfig) {
       return res.status(400).json({ message: "No active DB connection" });

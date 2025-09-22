@@ -1,52 +1,78 @@
-import React, { useState } from 'react';
-import { Database, Loader } from 'lucide-react';
-import { DatabaseConnection } from '../types';
-import { useSession } from '../contexts/SessionContext';
-import Modal from './Modal';
+import React, { useState } from "react";
+import { Database, Loader } from "lucide-react";
+import { DatabaseConnection } from "../types";
+import { useSession } from "../contexts/SessionContext";
+import Modal from "./Modal";
+import { connectDB } from "../services/connection";
+import { useAuth } from "../contexts/AuthContext";
 
 interface ConnectionModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const ConnectionModal: React.FC<ConnectionModalProps> = ({ isOpen, onClose }) => {
+const ConnectionModal: React.FC<ConnectionModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
   const [formData, setFormData] = useState<DatabaseConnection>({
-    dbUrl: '',
-    username: '',
-    password: '',
-    alias: ''
+    type: "mysql",
+    host: "localhost",
+    port: 3306,
+    database: "",
+    username: "",
+    password: "",
+    alias: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
-  const { createSession, isLoading } = useSession();
 
+  const { createSession, isLoading, setSummary } = useSession();
+  const { user } = useAuth();
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Basic validation
     const newErrors: Record<string, string> = {};
-    if (!formData.dbUrl.trim()) newErrors.dbUrl = 'Database URL is required';
-    if (!formData.username.trim()) newErrors.username = 'Username is required';
-    if (!formData.password.trim()) newErrors.password = 'Password is required';
-    
+    if (!formData.host.trim()) newErrors.host = "Host is required";
+    if (!formData.database.trim())
+      newErrors.database = "Database name is required";
+    if (!formData.username.trim()) newErrors.username = "Username is required";
+    if (!formData.password.trim()) newErrors.password = "Password is required";
+    if (formData.port <= 0 || formData.port > 65535)
+      newErrors.port = "Port must be between 1 and 65535";
+
     setErrors(newErrors);
-    
+
     if (Object.keys(newErrors).length === 0) {
       try {
-        await createSession(formData);
+        await createSession(formData, user);
         onClose();
-        setFormData({ dbUrl: '', username: '', password: '', alias: '' });
+        setFormData({
+          type: "mysql",
+          host: "localhost",
+          port: 3306,
+          database: "",
+          username: "",
+          password: "",
+          alias: "",
+        });
+        const connection_status = await connectDB(formData);
+        setSummary(connection_status.data.summary);
+
         setErrors({});
       } catch (error) {
-        setErrors({ general: 'Failed to connect to database' });
+        setErrors({ general: "Failed to connect to database" });
       }
     }
   };
 
-  const handleInputChange = (field: keyof DatabaseConnection, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (
+    field: keyof DatabaseConnection,
+    value: string
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
 
@@ -59,28 +85,95 @@ const ConnectionModal: React.FC<ConnectionModalProps> = ({ isOpen, onClose }) =>
             Enter your database connection details to start a new chat session.
           </p>
         </div>
-        
+
         {errors.general && (
           <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm">
             {errors.general}
           </div>
         )}
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Database URL *
+            Database Type *
+          </label>
+          <select
+            value={formData.type}
+            onChange={(e) =>
+              handleInputChange(
+                "type",
+                e.target.value as DatabaseConnection["type"]
+              )
+            }
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+          >
+            <option value="mysql">MySQL</option>
+            <option value="postgresql">PostgreSQL</option>
+            <option value="sqlite">SQLite</option>
+            <option value="mongodb">MongoDB</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Host *
           </label>
           <input
             type="text"
-            value={formData.dbUrl}
-            onChange={(e) => handleInputChange('dbUrl', e.target.value)}
-            placeholder="e.g., jdbc:mysql://localhost:3306/employees"
+            value={formData.host}
+            onChange={(e) => handleInputChange("host", e.target.value)}
+            placeholder="localhost"
             className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
-              errors.dbUrl ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              errors.host
+                ? "border-red-500"
+                : "border-gray-300 dark:border-gray-600"
             }`}
           />
-          {errors.dbUrl && (
-            <p className="text-red-500 text-sm mt-1">{errors.dbUrl}</p>
+          {errors.host && (
+            <p className="text-red-500 text-sm mt-1">{errors.host}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Port *
+          </label>
+          <input
+            type="number"
+            value={formData.port}
+            onChange={(e) =>
+              handleInputChange("port", parseInt(e.target.value) || 0)
+            }
+            placeholder="3306"
+            min="1"
+            max="65535"
+            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
+              errors.port
+                ? "border-red-500"
+                : "border-gray-300 dark:border-gray-600"
+            }`}
+          />
+          {errors.port && (
+            <p className="text-red-500 text-sm mt-1">{errors.port}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Database Name *
+          </label>
+          <input
+            type="text"
+            value={formData.database}
+            onChange={(e) => handleInputChange("database", e.target.value)}
+            placeholder="final_project"
+            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
+              errors.database
+                ? "border-red-500"
+                : "border-gray-300 dark:border-gray-600"
+            }`}
+          />
+          {errors.database && (
+            <p className="text-red-500 text-sm mt-1">{errors.database}</p>
           )}
         </div>
 
@@ -91,10 +184,12 @@ const ConnectionModal: React.FC<ConnectionModalProps> = ({ isOpen, onClose }) =>
           <input
             type="text"
             value={formData.username}
-            onChange={(e) => handleInputChange('username', e.target.value)}
-            placeholder="Database username"
+            onChange={(e) => handleInputChange("username", e.target.value)}
+            placeholder="root"
             className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
-              errors.username ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              errors.username
+                ? "border-red-500"
+                : "border-gray-300 dark:border-gray-600"
             }`}
           />
           {errors.username && (
@@ -109,10 +204,12 @@ const ConnectionModal: React.FC<ConnectionModalProps> = ({ isOpen, onClose }) =>
           <input
             type="password"
             value={formData.password}
-            onChange={(e) => handleInputChange('password', e.target.value)}
+            onChange={(e) => handleInputChange("password", e.target.value)}
             placeholder="Database password"
             className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
-              errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              errors.password
+                ? "border-red-500"
+                : "border-gray-300 dark:border-gray-600"
             }`}
           />
           {errors.password && (
@@ -122,13 +219,13 @@ const ConnectionModal: React.FC<ConnectionModalProps> = ({ isOpen, onClose }) =>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Alias (optional)
+            Connection Alias (optional)
           </label>
           <input
             type="text"
             value={formData.alias}
-            onChange={(e) => handleInputChange('alias', e.target.value)}
-            placeholder="Give this connection a friendly name"
+            onChange={(e) => handleInputChange("alias", e.target.value)}
+            placeholder="Local Test DB"
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
           />
         </div>
@@ -152,7 +249,7 @@ const ConnectionModal: React.FC<ConnectionModalProps> = ({ isOpen, onClose }) =>
                 Connecting...
               </>
             ) : (
-              'Connect'
+              "Connect"
             )}
           </button>
         </div>

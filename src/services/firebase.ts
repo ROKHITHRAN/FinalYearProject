@@ -8,7 +8,14 @@ import {
   GoogleAuthProvider,
   signOut as firebaseSignOut,
 } from "firebase/auth";
-import { doc, getDoc, getFirestore, setDoc } from "firebase/firestore/lite";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getFirestore,
+  setDoc,
+} from "firebase/firestore/lite";
 import { User } from "../types";
 
 // Firebase configuration
@@ -112,6 +119,11 @@ export const saveUser = async (user: {
       provider: "google",
       createdAt: new Date(),
       lastLogin: new Date(),
+    });
+    await addDoc(collection(db, "users", user.uid, "sessions"), {
+      startedAt: new Date(),
+      device: "Chrome on Windows",
+      status: "active",
     });
   } else {
     // Existing user → only update lastLogin
