@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { Session, DatabaseConnection, ChatMessage } from "../types";
 import { connectDB } from "../services/connection";
-import { doc, setDoc } from "firebase/firestore/lite";
+import { deleteDoc, doc, setDoc, updateDoc } from "firebase/firestore/lite";
 import { AuthUser, db } from "../services/firebase";
 import { getUserSessions } from "../services/session";
 
@@ -17,8 +17,8 @@ interface SessionContextType {
   currentSession: Session | null;
   createSession: (connection: DatabaseConnection) => Promise<void>;
   switchSession: (sessionId: string) => void;
-  deleteSession: (sessionId: string) => void;
-  renameSession: (sessionId: string, newAlias: string) => void;
+  deleteSession: (sessionId: string, uid: string) => void;
+  renameSession: (sessionId: string, newAlias: string, uid: string) => void;
   addMessage: (sessionId: string, message: ChatMessage) => void;
   sendQuery: (sessionId: string, query: string) => Promise<void>;
   isLoading: boolean;
@@ -47,8 +47,12 @@ const mockConnectDB = async (
 
   const session: Session = {
     id: Date.now().toString(),
-    dbUrl: connection.host,
+    dbType: connection.type,
+    host: connection.host,
+    port: connection.port,
+    dbName: connection.database,
     username: connection.username,
+    password: connection.password,
     alias: connection.alias || extractDBName(connection.host),
     history: [],
     isConnected: true,
@@ -189,22 +193,44 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     setCurrentSessionId(sessionId);
   };
 
-  const deleteSession = (sessionId: string) => {
-    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-    if (currentSessionId === sessionId) {
-      const remainingSessions = sessions.filter((s) => s.id !== sessionId);
-      setCurrentSessionId(
-        remainingSessions.length > 0 ? remainingSessions[0].id : null
-      );
+  const deleteSession = async (sessionId: string, userId: string) => {
+    try {
+      // 🔹 Delete from Firestore
+      await deleteDoc(doc(db, "users", userId, "sessions", sessionId));
+
+      // 🔹 Update local state
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+
+      if (currentSessionId === sessionId) {
+        setCurrentSessionId((prev) => {
+          const remaining = sessions.filter((s) => s.id !== sessionId);
+          return remaining.length > 0 ? remaining[0].id : null;
+        });
+      }
+    } catch (err) {
+      console.error("Error deleting session:", err);
     }
   };
 
-  const renameSession = (sessionId: string, newAlias: string) => {
-    setSessions((prev) =>
-      prev.map((session) =>
-        session.id === sessionId ? { ...session, alias: newAlias } : session
-      )
-    );
+  const renameSession = async (
+    sessionId: string,
+    newAlias: string,
+    uid: string
+  ) => {
+    try {
+      // 🔹 Update Firestore
+      const sessionRef = doc(db, "users", uid, "sessions", sessionId);
+      await updateDoc(sessionRef, { alias: newAlias });
+
+      // 🔹 Update local state
+      setSessions((prev) =>
+        prev.map((session) =>
+          session.id === sessionId ? { ...session, alias: newAlias } : session
+        )
+      );
+    } catch (err) {
+      console.error("Error renaming session:", err);
+    }
   };
 
   const addMessage = (sessionId: string, message: ChatMessage) => {

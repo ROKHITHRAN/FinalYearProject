@@ -1,10 +1,11 @@
-import React from 'react';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { AuthProvider } from './contexts/AuthContext';
-import { SessionProvider } from './contexts/SessionContext';
-import { useAuth } from './contexts/AuthContext';
-import Layout from './components/Layout';
-import SignInPage from './components/SignInPage';
+import React from "react";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthProvider } from "./contexts/AuthContext";
+import { SessionProvider } from "./contexts/SessionContext";
+import { useAuth } from "./contexts/AuthContext";
+import Layout from "./components/Layout";
+import SignInPage from "./components/SignInPage";
+import { Toaster } from "sonner";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -36,6 +37,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <AppContent />
+        <Toaster richColors position="top-right" />
       </AuthProvider>
     </ThemeProvider>
   );

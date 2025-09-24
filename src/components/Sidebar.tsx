@@ -1,27 +1,41 @@
-import React, { useState } from 'react';
-import { Plus, Database, Settings, Moon, Sun, Edit2, Trash2, ChevronLeft, Menu, LogOut } from 'lucide-react';
-import { useSession } from '../contexts/SessionContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
-import ConnectionModal from './ConnectionModal';
+import React, { useState } from "react";
+import {
+  Plus,
+  Database,
+  Settings,
+  Moon,
+  Sun,
+  Edit2,
+  Trash2,
+  ChevronLeft,
+  Menu,
+  LogOut,
+} from "lucide-react";
+import { useSession } from "../contexts/SessionContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
+import ConnectionModal from "./ConnectionModal";
 
 interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapsed: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  isCollapsed,
+  onToggleCollapsed,
+}) => {
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-  const [editingAlias, setEditingAlias] = useState('');
-  
-  const { 
-    sessions, 
-    currentSessionId, 
-    switchSession, 
-    deleteSession, 
-    renameSession 
+  const [editingAlias, setEditingAlias] = useState("");
+
+  const {
+    sessions,
+    currentSessionId,
+    switchSession,
+    deleteSession,
+    renameSession,
   } = useSession();
   const { theme, toggleTheme } = useTheme();
   const { signOut, user } = useAuth();
@@ -33,20 +47,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
 
   const handleSaveEdit = () => {
     if (editingSessionId && editingAlias.trim()) {
-      renameSession(editingSessionId, editingAlias.trim());
+      renameSession(editingSessionId, editingAlias.trim(), user!.uid);
     }
     setEditingSessionId(null);
-    setEditingAlias('');
+    setEditingAlias("");
   };
 
   const handleCancelEdit = () => {
     setEditingSessionId(null);
-    setEditingAlias('');
+    setEditingAlias("");
   };
 
-  const handleDeleteSession = (sessionId: string, sessionAlias: string) => {
-    if (confirm(`Are you sure you want to delete "${sessionAlias}"?`)) {
-      deleteSession(sessionId);
+  const handleDeleteSession = (sessionId: string, uid: string) => {
+    if (confirm(`Are you sure you want to delete "${uid}"?`)) {
+      deleteSession(sessionId, uid);
     }
   };
 
@@ -61,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
             <Menu size={20} />
           </button>
         </div>
-        
+
         <div className="flex-1 px-4 py-2">
           <button
             onClick={() => setIsConnectionModalOpen(true)}
@@ -70,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
           >
             <Plus size={16} />
           </button>
-          
+
           <div className="space-y-2">
             {sessions.map((session) => (
               <button
@@ -78,8 +92,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
                 onClick={() => switchSession(session.id)}
                 className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
                   currentSessionId === session.id
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400"
+                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
                 title={session.alias}
               >
@@ -88,17 +102,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
             ))}
           </div>
         </div>
-        
+
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <button
             onClick={toggleTheme}
             className="w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            title={
+              theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"
+            }
           >
-            {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+            {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
           </button>
         </div>
-        
+
         <ConnectionModal
           isOpen={isConnectionModalOpen}
           onClose={() => setIsConnectionModalOpen(false)}
@@ -122,13 +138,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
             <ChevronLeft size={20} />
           </button>
         </div>
-        
+
         <div className="mb-4 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Welcome, <span className="font-medium text-gray-900 dark:text-white">{user?.name}</span>
+            Welcome,{" "}
+            <span className="font-medium text-gray-900 dark:text-white">
+              {user?.name}
+            </span>
           </p>
         </div>
-        
+
         <button
           onClick={() => setIsConnectionModalOpen(true)}
           className="w-full flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -145,8 +164,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
               key={session.id}
               className={`group relative rounded-lg transition-colors ${
                 currentSessionId === session.id
-                  ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800'
-                  : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                  ? "bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
               }`}
             >
               {editingSessionId === session.id ? (
@@ -156,8 +175,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
                     value={editingAlias}
                     onChange={(e) => setEditingAlias(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSaveEdit();
-                      if (e.key === 'Escape') handleCancelEdit();
+                      if (e.key === "Enter") handleSaveEdit();
+                      if (e.key === "Escape") handleCancelEdit();
                     }}
                     onBlur={handleSaveEdit}
                     className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -170,7 +189,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
                   className="w-full text-left p-3"
                 >
                   <div className="flex items-start gap-2">
-                    <Database size={16} className="text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
+                    <Database
+                      size={16}
+                      className="text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0"
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-gray-900 dark:text-white truncate">
                         {session.alias}
@@ -182,7 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
                   </div>
                 </button>
               )}
-              
+
               {editingSessionId !== session.id && (
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                   <button
@@ -193,7 +215,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
                     <Edit2 size={12} />
                   </button>
                   <button
-                    onClick={() => handleDeleteSession(session.id, session.alias)}
+                    onClick={() => handleDeleteSession(session.id, user!.uid)}
                     className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                     title="Delete"
                   >
@@ -203,7 +225,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
               )}
             </div>
           ))}
-          
+
           {sessions.length === 0 && (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               <Database size={48} className="mx-auto mb-4 opacity-50" />
@@ -223,7 +245,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
             <Settings size={16} />
             Appearance
           </button>
-          
+
           {showSettings && (
             <div className="absolute bottom-full left-0 mb-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2">
               <button
@@ -233,8 +255,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapsed }) => 
                 }}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
               >
-                {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
-                {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+                {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+                {theme === "light" ? "Dark Mode" : "Light Mode"}
               </button>
               <hr className="my-1 border-gray-200 dark:border-gray-700" />
               <button

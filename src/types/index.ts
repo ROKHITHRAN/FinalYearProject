@@ -7,8 +7,12 @@ export interface ChatMessage {
 
 export interface Session {
   id: string;
-  dbUrl: string;
+  dbType: string;
+  host: string;
+  port: number;
+  dbName: string;
   username: string;
+  password: string;
   alias: string;
   history: ChatMessage[];
   isConnected: boolean;

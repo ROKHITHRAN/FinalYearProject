@@ -5,6 +5,7 @@ import { useSession } from "../contexts/SessionContext";
 import Modal from "./Modal";
 import { connectDB } from "../services/connection";
 import { useAuth } from "../contexts/AuthContext";
+import { toast } from "sonner";
 
 interface ConnectionModalProps {
   isOpen: boolean;
@@ -26,7 +27,7 @@ const ConnectionModal: React.FC<ConnectionModalProps> = ({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { createSession, isLoading, setSummary } = useSession();
+  const { createSession, isLoading } = useSession();
   const { user } = useAuth();
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +46,10 @@ const ConnectionModal: React.FC<ConnectionModalProps> = ({
 
     if (Object.keys(newErrors).length === 0) {
       try {
-        await createSession(formData, user);
+        const connection_status = await connectDB(formData);
+        await createSession(formData);
+
+        setErrors({});
         onClose();
         setFormData({
           type: "mysql",
@@ -56,11 +60,9 @@ const ConnectionModal: React.FC<ConnectionModalProps> = ({
           password: "",
           alias: "",
         });
-        const connection_status = await connectDB(formData);
-        setSummary(connection_status.data.summary);
-
-        setErrors({});
+        toast.success("Successfully connected");
       } catch (error) {
+        console.log(error);
         setErrors({ general: "Failed to connect to database" });
       }
     }
