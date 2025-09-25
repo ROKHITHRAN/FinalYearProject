@@ -7,9 +7,17 @@ import React, {
 } from "react";
 import { Session, DatabaseConnection, ChatMessage } from "../types";
 import { connectDB } from "../services/connection";
-import { deleteDoc, doc, setDoc, updateDoc } from "firebase/firestore/lite";
+import {
+  arrayUnion,
+  deleteDoc,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore/lite";
 import { AuthUser, db } from "../services/firebase";
 import { getUserSessions } from "../services/session";
+import { useAuth } from "./AuthContext";
 
 interface SessionContextType {
   sessions: Session[];
@@ -128,7 +136,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
+  const { user } = useAuth();
   const currentSession =
     sessions.find((s) => s.id === currentSessionId) || null;
 
@@ -233,14 +241,23 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     }
   };
 
-  const addMessage = (sessionId: string, message: ChatMessage) => {
-    setSessions((prev) =>
-      prev.map((session) =>
-        session.id === sessionId
-          ? { ...session, history: [...session.history, message] }
-          : session
-      )
-    );
+  const addMessage = async (sessionId: string, message: ChatMessage) => {
+    try {
+      const docRef = doc(db, "users", String(user?.uid), "sessions", sessionId);
+      await updateDoc(docRef, {
+        history: arrayUnion(message),
+      });
+
+      setSessions((prev) =>
+        prev.map((session) =>
+          session.id === sessionId
+            ? { ...session, history: [...session.history, message] }
+            : session
+        )
+      );
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   const sendQuery = async (sessionId: string, query: string) => {

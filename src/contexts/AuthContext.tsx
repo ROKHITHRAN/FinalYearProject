@@ -103,7 +103,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const user = await register(email, password); // firebase.js register
       localStorage.setItem("dbChatUser", JSON.stringify(user));
-      localStorage.setItem("token", user.token);
+      localStorage.setItem("token", user.token!);
       const FBuser: User = {
         uid: user.uid,
         email: user.email || "",
@@ -113,7 +113,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         user: FBuser,
         isAuthenticated: true,
         isLoading: false,
-        token: user.token,
+        token: user.token!,
       });
     } catch (error) {
       setAuthState((prev) => ({ ...prev, isLoading: false }));
@@ -126,7 +126,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const user = await loginWithGoogle(); // firebase.js Google login
       localStorage.setItem("dbChatUser", JSON.stringify(user));
-      localStorage.setItem("token", user.token);
+      localStorage.setItem("token", user.token!);
       const FBuser: User = {
         uid: user.uid,
         email: user.email || "",
