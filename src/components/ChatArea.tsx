@@ -1,6 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Loader, Database, Bot, User } from "lucide-react";
+import {
+  Send,
+  Loader,
+  Database,
+  Bot,
+  User,
+  Download,
+  NotepadText,
+} from "lucide-react";
 import { useSession } from "../contexts/SessionContext";
+import { CSVLink } from "react-csv";
+import html2canvas from "html2canvas";
+import { useTheme } from "../contexts/ThemeContext";
 
 // Component to render table data
 const TableRenderer: React.FC<{ data: any[] }> = ({ data }) => {
@@ -44,24 +55,80 @@ const TableRenderer: React.FC<{ data: any[] }> = ({ data }) => {
 
 // Component to render message content with table support
 const MessageContent: React.FC<{ text: string }> = ({ text }) => {
+  const { theme } = useTheme();
+  const tableRef = useRef<HTMLDivElement>(null);
+
   // Check if message contains table data
   const tableDataMatch = text.match(/\[TABLE_DATA\](.+)$/);
-
+  const [showDropdown, setShowDropdown] = useState(false);
   if (tableDataMatch) {
     try {
       const tableData = JSON.parse(tableDataMatch[1]);
       const textWithoutTable = text.replace(/\[TABLE_DATA\].+$/, "").trim();
 
+      const downloadPNG = async () => {
+        if (!tableRef.current) return;
+        const canvas = await html2canvas(tableRef.current);
+        const link = document.createElement("a");
+        link.download = "table.png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      };
+
       return (
-        <div>
-          <div className="whitespace-pre-wrap break-words">
+        <div className="relative">
+          {/* Text above table */}
+          <div className="whitespace-pre-wrap break-words mb-2">
             {textWithoutTable}
           </div>
-          <TableRenderer data={tableData} />
+
+          {/* Download button at top-right */}
+          <div className="flex justify-end mb-1 relative">
+            <Download onClick={() => setShowDropdown((prev) => !prev)} />
+
+            {showDropdown && (
+              <div
+                className={`absolute right-0 top-full mt-1 border shadow-lg rounded z-10 ${
+                  theme === "dark"
+                    ? "bg-gray-800 text-white border-gray-700"
+                    : "bg-white text-gray-900 border-gray-300"
+                }`}
+              >
+                <ul>
+                  <li>
+                    <button
+                      className={`w-full text-left px-4 py-2 hover:${
+                        theme === "dark" ? "bg-gray-700" : "bg-gray-100"
+                      }`}
+                      onClick={downloadPNG}
+                    >
+                      PNG
+                    </button>
+                  </li>
+                  <li>
+                    <CSVLink
+                      data={tableData}
+                      filename="table.csv"
+                      className={`w-full block px-4 py-2 hover:${
+                        theme === "dark" ? "bg-gray-700" : "bg-gray-100"
+                      }`}
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      CSV
+                    </CSVLink>
+                  </li>
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Table */}
+          <div ref={tableRef}>
+            <TableRenderer data={tableData} />
+          </div>
         </div>
       );
     } catch (error) {
-      // If parsing fails, just show the original text
       return (
         <div className="whitespace-pre-wrap break-words">
           {text.replace(/\[TABLE_DATA\].+$/, "")}
@@ -77,6 +144,7 @@ const ChatArea: React.FC = () => {
   const [inputValue, setInputValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showSummary, setShowSummary] = useState(false);
 
   const { currentSession, sendQuery, isLoading } = useSession();
 
@@ -155,8 +223,35 @@ const ChatArea: React.FC = () => {
             <div className="w-2 h-2 bg-green-500 rounded-full" />
             Connected
           </div>
+          <button
+            onClick={() => setShowSummary(true)}
+            className="text-blue-600 hover:text-blue-900"
+            title="Summary"
+          >
+            <NotepadText />
+          </button>
         </div>
       </div>
+
+      {/* Summary Popup */}
+      {showSummary && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-lg w-full p-6 relative">
+            <button
+              onClick={() => setShowSummary(false)}
+              className="absolute top-3 right-3 text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+            >
+              ✕
+            </button>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+              Session Summary
+            </h3>
+            <div className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+              {currentSession.summary}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -202,14 +297,14 @@ const ChatArea: React.FC = () => {
                       : "bg-white dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700"
                   }`}
                 >
-                  <MessageContent text={message.text} />
+                  <MessageContent text={message.text!} />
                 </div>
                 <div
                   className={`text-xs text-gray-500 dark:text-gray-400 mt-1 ${
                     message.sender === "user" ? "text-right" : "text-left"
                   }`}
                 >
-                  {message.timestamp.toLocaleTimeString()}
+                  {/* {message.timestamp.toLocaleDateString()} */}
                 </div>
               </div>
             </div>

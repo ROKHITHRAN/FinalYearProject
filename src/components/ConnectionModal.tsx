@@ -47,7 +47,7 @@ const ConnectionModal: React.FC<ConnectionModalProps> = ({
     if (Object.keys(newErrors).length === 0) {
       try {
         const connection_status = await connectDB(formData);
-        await createSession(formData);
+        await createSession(formData, connection_status.data.summary);
 
         setErrors({});
         onClose();

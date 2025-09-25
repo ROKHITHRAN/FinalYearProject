@@ -1,8 +1,8 @@
 export interface ChatMessage {
   id: string;
   sender: "user" | "system";
-  text: string;
   timestamp: Date;
+  text?: string;
 }
 
 export interface Session {
@@ -17,6 +17,7 @@ export interface Session {
   history: ChatMessage[];
   isConnected: boolean;
   createdAt: Date;
+  summary: string;
 }
 
 export interface DatabaseConnection {

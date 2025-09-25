@@ -12,18 +12,23 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  serverTimestamp,
   setDoc,
   updateDoc,
 } from "firebase/firestore/lite";
 import { AuthUser, db } from "../services/firebase";
 import { getUserSessions } from "../services/session";
 import { useAuth } from "./AuthContext";
+import { getQueryResult } from "../services/chat";
 
 interface SessionContextType {
   sessions: Session[];
   currentSessionId: string | null;
   currentSession: Session | null;
-  createSession: (connection: DatabaseConnection) => Promise<void>;
+  createSession: (
+    connection: DatabaseConnection,
+    summary: string
+  ) => Promise<void>;
   switchSession: (sessionId: string) => void;
   deleteSession: (sessionId: string, uid: string) => void;
   renameSession: (sessionId: string, newAlias: string, uid: string) => void;
@@ -48,7 +53,8 @@ interface SessionProviderProps {
 
 // Mock API functions
 const mockConnectDB = async (
-  connection: DatabaseConnection
+  connection: DatabaseConnection,
+  summary: string
 ): Promise<Session> => {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -65,6 +71,7 @@ const mockConnectDB = async (
     history: [],
     isConnected: true,
     createdAt: new Date(),
+    summary: summary,
   };
   try {
     const user: AuthUser = JSON.parse(
@@ -83,13 +90,12 @@ const mockConnectDB = async (
   return session;
 };
 
-const mockQueryDB = async (
-  sessionId: string,
-  query: string
-): Promise<string> => {
+const mockQueryDB = async (sessionId: string, query: string): Promise<any> => {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 1500));
 
+  const response = await getQueryResult(query);
+  return response;
   // Mock responses based on query keywords
   if (query.toLowerCase().includes("select")) {
     return `Query executed successfully. Found 15 records matching your criteria.
@@ -170,10 +176,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     localStorage.setItem("dbChatSessions", JSON.stringify(sessions));
   }, [sessions]);
 
-  const createSession = async (connection: DatabaseConnection) => {
+  const createSession = async (
+    connection: DatabaseConnection,
+    summary: string
+  ) => {
     setIsLoading(true);
     try {
-      const newSession = await mockConnectDB(connection);
+      const newSession = await mockConnectDB(connection, summary);
       setSessions((prev) => [newSession, ...prev]);
       setCurrentSessionId(newSession.id);
 
@@ -181,7 +190,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
       const welcomeMessage: ChatMessage = {
         id: Date.now().toString(),
         sender: "system",
-        text: `Successfully connected to ${newSession.alias}! You can now start querying your database using natural language.`,
+        text: `Successfully connected to ${newSession.alias}! You can now start querying your database using natural language.}`,
         timestamp: new Date(),
       };
 
@@ -273,10 +282,14 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
 
     try {
       const response = await mockQueryDB(sessionId, query);
+      console.log(response);
+      const messageText = `Here is the required list: [TABLE_DATA]${JSON.stringify(
+        response.data.result
+      )}`;
       const systemMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: "system",
-        text: response,
+        text: messageText,
         timestamp: new Date(),
       };
       addMessage(sessionId, systemMessage);
