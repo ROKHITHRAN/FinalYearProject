@@ -14,10 +14,57 @@ import html2canvas from "html2canvas";
 import { useTheme } from "../contexts/ThemeContext";
 
 // Component to render table data
+// const TableRenderer: React.FC<{ data: any[] }> = ({ data }) => {
+//   if (!data || data.length === 0) return null;
+
+//   const columns = Object.keys(data[0]);
+
+//   return (
+//     <div className="overflow-x-auto mt-3">
+//       <table className="min-w-full border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+//         <thead className="bg-gray-50 dark:bg-gray-800">
+//           <tr>
+//             {columns.map((column) => (
+//               <th
+//                 key={column}
+//                 className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700"
+//               >
+//                 {column.replace(/_/g, " ")}
+//               </th>
+//             ))}
+//           </tr>
+//         </thead>
+//         <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+//           {data.map((row, index) => (
+//             <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+//               {columns.map((column) => (
+//                 <td
+//                   key={column}
+//                   className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap"
+//                 >
+//                   {row[column]}
+//                 </td>
+//               ))}
+//             </tr>
+//           ))}
+//         </tbody>
+//       </table>
+//     </div>
+//   );
+// };
+
 const TableRenderer: React.FC<{ data: any[] }> = ({ data }) => {
+  const [currentPage, setCurrentPage] = useState(1);
   if (!data || data.length === 0) return null;
 
+  const rowsPerPage = 5; // you can make this configurable
+
   const columns = Object.keys(data[0]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(data.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const paginatedData = data.slice(startIndex, startIndex + rowsPerPage);
 
   return (
     <div className="overflow-x-auto mt-3">
@@ -35,7 +82,7 @@ const TableRenderer: React.FC<{ data: any[] }> = ({ data }) => {
           </tr>
         </thead>
         <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-          {data.map((row, index) => (
+          {paginatedData.map((row, index) => (
             <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
               {columns.map((column) => (
                 <td
@@ -49,6 +96,29 @@ const TableRenderer: React.FC<{ data: any[] }> = ({ data }) => {
           ))}
         </tbody>
       </table>
+
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between mt-3 text-sm text-gray-600 dark:text-gray-300">
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600"
+          >
+            Prev
+          </button>
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

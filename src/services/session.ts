@@ -14,17 +14,19 @@ export const getUserSessions = async (): Promise<Session[]> => {
     // Map documents to Session objects
     const sessions: Session[] = snapshot.docs.map((doc) => {
       const data = doc.data();
-
       return {
         id: doc.id,
-        dbUrl: data.dbUrl,
+        host: data.host,
+        port: data.port,
+        dbName: data.dbName,
         username: data.username,
         alias: data.alias,
-        history: data.history || [],
+        history: data.history,
         isConnected: data.isConnected,
         createdAt: data.createdAt?.toDate
           ? data.createdAt.toDate() // ✅ Firestore Timestamp → Date
           : new Date(),
+        summary: data.summary,
       };
     });
 

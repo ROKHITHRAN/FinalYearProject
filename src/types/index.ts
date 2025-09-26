@@ -12,7 +12,7 @@ export interface Session {
   port: number;
   dbName: string;
   username: string;
-  password: string;
+  password?: string;
   alias: string;
   history: ChatMessage[];
   isConnected: boolean;

@@ -147,28 +147,85 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     sessions.find((s) => s.id === currentSessionId) || null;
 
   // Load sessions from localStorage on mount
-  useEffect(() => {
-    const savedSessions = localStorage.getItem("dbChatSessions");
-    if (savedSessions) {
-      const parsed = JSON.parse(savedSessions);
-      // Convert date strings back to Date objects
-      const sessions = parsed.map((session: any) => ({
-        ...session,
-        createdAt: new Date(session.createdAt),
-        history: session.history.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp),
-        })),
-      }));
-      getUserSessions().then((res) => {
-        setSessions(res);
-      });
+  // useEffect(() => {
+  //   const savedSessions = localStorage.getItem("dbChatSessions");
+  //   if (savedSessions) {
+  //     const parsed = JSON.parse(savedSessions);
+  //     // Convert date strings back to Date objects
+  //     const sessions = parsed.map((session: any) => ({
+  //       ...session,
+  //       createdAt: new Date(session.createdAt),
+  //       history: session.history.map((msg: any) => ({
+  //         ...msg,
+  //         timestamp: new Date(msg.timestamp),
+  //       })),
+  //     }));
+  //     getUserSessions().then((res) => {
+  //       setSessions(res);
+  //     });
 
-      setSessions(sessions);
-      if (sessions.length > 0) {
-        setCurrentSessionId(sessions[0].id);
+  //     setSessions(sessions);
+  //     if (sessions.length > 0) {
+  //       setCurrentSessionId(sessions[0].id);
+  //     }
+  //   }
+  // }, []);
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        const backendSessions = await getUserSessions();
+
+        // Convert Firestore timestamps to Date
+        const normalizedSessions = backendSessions.map((session: any) => ({
+          ...session,
+          createdAt:
+            session.createdAt?.seconds !== undefined
+              ? new Date(session.createdAt.seconds * 1000)
+              : new Date(session.createdAt), // fallback for localStorage
+          history: session.history.map((msg: any) => ({
+            ...msg,
+            timestamp:
+              msg.timestamp?.seconds !== undefined
+                ? new Date(msg.timestamp.seconds * 1000)
+                : new Date(msg.timestamp),
+          })),
+        }));
+
+        setSessions(normalizedSessions);
+
+        if (normalizedSessions.length > 0) {
+          setCurrentSessionId(normalizedSessions[0].id);
+        }
+
+        // Save normalized sessions to localStorage
+        localStorage.setItem(
+          "dbChatSessions",
+          JSON.stringify(normalizedSessions)
+        );
+      } catch (error) {
+        console.error("Error fetching sessions:", error);
+
+        // fallback to localStorage if backend fails
+        const savedSessions = localStorage.getItem("dbChatSessions");
+        if (savedSessions) {
+          const parsed = JSON.parse(savedSessions);
+          const sessions = parsed.map((session: any) => ({
+            ...session,
+            createdAt: new Date(session.createdAt),
+            history: session.history.map((msg: any) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp),
+            })),
+          }));
+          setSessions(sessions);
+          if (sessions.length > 0) {
+            setCurrentSessionId(sessions[0].id);
+          }
+        }
       }
-    }
+    };
+
+    fetchSessions();
   }, []);
 
   // Save sessions to localStorage whenever sessions change
