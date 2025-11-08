@@ -51,12 +51,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user: null,
     isAuthenticated: false,
     isLoading: true,
-    token: localStorage.getItem("token") || null,
+    token: sessionStorage.getItem("token") || null,
   });
   // Initialize user from localStorage
   useEffect(() => {
-    const savedUser = localStorage.getItem("dbChatUser");
-    const token = localStorage.getItem("token");
+    const savedUser = sessionStorage.getItem("dbChatUser");
+    const token = sessionStorage.getItem("token");
     if (savedUser && token) {
       try {
         setAuthState({
@@ -66,8 +66,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           token,
         });
       } catch {
-        localStorage.removeItem("dbChatUser");
-        localStorage.removeItem("token");
+        sessionStorage.removeItem("dbChatUser");
+        sessionStorage.removeItem("token");
         setAuthState((prev) => ({ ...prev, isLoading: false }));
       }
     } else {
@@ -79,8 +79,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAuthState((prev) => ({ ...prev, isLoading: true }));
     try {
       const user = await loginWithEmail(email, password); // firebase.js login returns { uid, email, token }
-      localStorage.setItem("dbChatUser", JSON.stringify(user));
-      localStorage.setItem("token", user.token!);
+      sessionStorage.setItem("dbChatUser", JSON.stringify(user));
+      sessionStorage.setItem("token", user.token!);
       const FBuser: User = {
         uid: user.uid,
         email: user.email || "",
@@ -125,8 +125,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAuthState((prev) => ({ ...prev, isLoading: true }));
     try {
       const user = await loginWithGoogle(); // firebase.js Google login
-      localStorage.setItem("dbChatUser", JSON.stringify(user));
-      localStorage.setItem("token", user.token!);
+      sessionStorage.setItem("dbChatUser", JSON.stringify(user));
+      sessionStorage.setItem("user", JSON.stringify(user));
+
+      sessionStorage.setItem("token", user.token!);
       const FBuser: User = {
         uid: user.uid,
         email: user.email || "",
@@ -147,8 +149,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOutHandler = async () => {
     await logout();
-    localStorage.removeItem("dbChatUser");
-    localStorage.removeItem("token");
+    // localStorage.removeItem("dbChatUser");
+    sessionStorage.removeItem("dbChatUser");
+    sessionStorage.removeItem("token");
     setAuthState({
       user: null,
       isAuthenticated: false,

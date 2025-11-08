@@ -8,18 +8,22 @@ import React, {
 import { Session, DatabaseConnection, ChatMessage } from "../types";
 import { connectDB } from "../services/connection";
 import {
+  addDoc,
   arrayUnion,
+  collection,
   deleteDoc,
   doc,
   getDoc,
   serverTimestamp,
   setDoc,
   updateDoc,
-} from "firebase/firestore/lite";
-import { AuthUser, db } from "../services/firebase";
-import { getUserSessions } from "../services/session";
+} from "firebase/firestore";
+import { AuthUser, db, logout } from "../services/firebase";
+import { getUserSessions, isTokenExpired } from "../services/session";
 import { useAuth } from "./AuthContext";
 import { getQueryResult } from "../services/chat";
+import { jwtDecode } from "jwt-decode";
+import { DecodedIdToken } from "firebase-admin/auth";
 
 interface SessionContextType {
   sessions: Session[];
@@ -68,7 +72,6 @@ const mockConnectDB = async (
     username: connection.username,
     password: connection.password,
     alias: connection.alias || extractDBName(connection.host),
-    history: [],
     isConnected: true,
     createdAt: new Date(),
     summary: summary,
@@ -233,6 +236,67 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     localStorage.setItem("dbChatSessions", JSON.stringify(sessions));
   }, [sessions]);
 
+  const userData = JSON.parse(sessionStorage.getItem("dbChatUser") || "null");
+
+  useEffect(() => {
+    if (!userData?.idToken) return;
+
+    if (isTokenExpired(userData.idToken)) {
+      logout(); // clear localStorage, redirect to login
+    } else {
+      // Schedule auto-logout at expiry
+      const decoded: DecodedIdToken = jwtDecode(userData.idToken);
+      const timeout = decoded.exp * 1000 - Date.now();
+
+      const timer = setTimeout(() => logout(), timeout);
+
+      return () => clearTimeout(timer);
+    }
+  }, [userData]);
+  useEffect(() => {
+    const fetchConfig = async () => {
+      if (!user?.uid || !currentSessionId) return;
+
+      // export interface DatabaseConnection {
+      //   type: "mysql" | "postgresql" | "sqlite" | "mongodb";
+      //   host: string;
+      //   port: number;
+      //   database: string;
+      //   username: string;
+      //   password: string;
+      //   alias?: string;
+      // }
+
+      try {
+        const docRef = doc(db, "users", user.uid, "sessions", currentSessionId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const config: DatabaseConnection = {
+            type: data.dbType,
+            host: data.host,
+            port: data.port,
+            database: data.dbName,
+            username: data.username,
+            password: data.password,
+            alias: data.alias,
+          };
+          const res = await connectDB(config);
+          console.log(res);
+
+          // 🔹 now call your DB connection logic with this config
+          // connectDB(data);
+        } else {
+          console.warn("No config found for session:", currentSessionId);
+        }
+      } catch (error) {
+        console.error("Error fetching config:", error);
+      }
+    };
+
+    fetchConfig();
+  }, [user?.uid, currentSessionId]);
   const createSession = async (
     connection: DatabaseConnection,
     summary: string
@@ -262,8 +326,16 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
       setIsLoading(false);
     }
   };
-
-  const switchSession = (sessionId: string) => {
+  //TODO
+  const switchSession = async (sessionId: string) => {
+    // const sessionRef = doc(
+    //   db,
+    //   "users",
+    //   String(user?.uid),
+    //   "sessions",
+    //   sessionId
+    // );
+    // await connectDB()
     setCurrentSessionId(sessionId);
   };
 
@@ -309,18 +381,28 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
 
   const addMessage = async (sessionId: string, message: ChatMessage) => {
     try {
-      const docRef = doc(db, "users", String(user?.uid), "sessions", sessionId);
-      await updateDoc(docRef, {
-        history: arrayUnion(message),
+      const historyRef = collection(
+        db,
+        "users",
+        String(user?.uid),
+        "sessions",
+        sessionId,
+        "history"
+      );
+
+      // Add message as a new doc
+      await addDoc(historyRef, {
+        ...message,
+        createdAt: serverTimestamp(), // Firestore timestamp
       });
 
-      setSessions((prev) =>
-        prev.map((session) =>
-          session.id === sessionId
-            ? { ...session, history: [...session.history, message] }
-            : session
-        )
-      );
+      // setSessions((prev) =>
+      //   prev.map((session) =>
+      //     session.id === sessionId
+      //       ? { ...session, history: [...session.history, message] }
+      //       : session
+      //   )
+      // );
     } catch (err) {
       console.log(err);
     }

@@ -12,7 +12,11 @@ import { useSession } from "../contexts/SessionContext";
 import { CSVLink } from "react-csv";
 import html2canvas from "html2canvas";
 import { useTheme } from "../contexts/ThemeContext";
-
+import { collection, orderBy, query } from "firebase/firestore";
+import { ChatMessage } from "../types";
+import { onSnapshot } from "firebase/firestore";
+import { db } from "../services/firebase";
+import { useAuth } from "../contexts/AuthContext";
 // Component to render table data
 // const TableRenderer: React.FC<{ data: any[] }> = ({ data }) => {
 //   if (!data || data.length === 0) return null;
@@ -215,16 +219,43 @@ const ChatArea: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showSummary, setShowSummary] = useState(false);
-
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const { currentSession, sendQuery, isLoading } = useSession();
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!currentSession?.id || !user?.uid) return; // guard
+
+    const historyRef = collection(
+      db,
+      "users",
+      user.uid,
+      "sessions",
+      currentSession.id,
+      "history"
+    );
+
+    const q = query(historyRef, orderBy("createdAt", "asc"));
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      const msg = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setMessages(msg);
+    });
+
+    return () => unsub(); // cleanup
+  }, [currentSession?.id, user?.uid]);
+
+  // console.log(messages);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [currentSession?.history]);
+  // useEffect(() => {
+  //   scrollToBottom();
+  // }, [currentSession?.history]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -322,10 +353,9 @@ const ChatArea: React.FC = () => {
           </div>
         </div>
       )}
-
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {currentSession.history.length === 0 ? (
+        {messages.length === 0 ? (
           <div className="text-center text-gray-500 dark:text-gray-400">
             <Bot size={48} className="mx-auto mb-4 opacity-50" />
             <p>Start a conversation with your database!</p>
@@ -334,7 +364,7 @@ const ChatArea: React.FC = () => {
             </p>
           </div>
         ) : (
-          currentSession.history.map((message) => (
+          messages.map((message) => (
             <div
               key={message.id}
               className={`flex gap-3 ${
