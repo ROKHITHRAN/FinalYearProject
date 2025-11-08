@@ -15,7 +15,7 @@ import {
   getDoc,
   getFirestore,
   setDoc,
-} from "firebase/firestore/lite";
+} from "firebase/firestore";
 import { User } from "../types";
 
 // Firebase configuration

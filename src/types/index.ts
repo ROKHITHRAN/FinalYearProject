@@ -14,7 +14,6 @@ export interface Session {
   username: string;
   password?: string;
   alias: string;
-  history: ChatMessage[];
   isConnected: boolean;
   createdAt: Date;
   summary: string;
